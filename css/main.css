@@ -1,0 +1,35 @@
+body {
+	margin: 0 auto;
+}
+
+.outer {
+    display: table;
+    position: absolute;
+    height: 100%;
+    width: 100%;
+}
+
+.middle {
+    display: table-cell;
+    vertical-align: middle;
+}
+
+#map {
+    margin-left: auto;
+    margin-right: auto; 
+    width: 800px;
+    height: 500px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
