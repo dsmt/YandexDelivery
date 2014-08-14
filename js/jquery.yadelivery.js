@@ -104,9 +104,20 @@ jQuery(document).ready(function() {
                     self.initStartPoint(self);
                 }
                 self._myCollection = new ymaps.GeoObjectCollection();
-                self._regions = new ymaps   .GeoObjectCollection();
-
-                $(self.element).append('<div id="yandex-delivery-result" style="display: none;"></div>');
+                self._regions = new ymaps.GeoObjectCollection();
+                $(self.element).css('position', 'relative').append('<div id="yandex-delivery-result"></div>');
+                $('#yandex-delivery-result').css({
+                    'position': 'absolute',
+                    'bottom': '0',
+                    'background-color': 'white',
+                    'width': '100%',
+                    'padding': '10px',
+                    'border': 'solid 1px lightgrey'
+                }).toggle();
+                $('#yandex-delivery-result ymaps').click(function() {
+                    console.log(123);
+                    $('#yandex-delivery-result').toggle();
+                });
             });
         });
     };
@@ -196,30 +207,32 @@ jQuery(document).ready(function() {
             self.setStartPoint(res);
         });
     }
-    YandexDelivery.prototype.getBounds = function(self, start, finish) {
-        var xDelta = Math.abs(start[0] - finish[0]) / 10,
-            yDelta = Math.abs(start[1] - finish[1]) / 10,
-            south = (start[1] < finish[1]) ? start[1] : finish[1],
-            north = (start[1] < finish[1]) ? finish[1] : start[1],
-            west = (start[0] < finish[0]) ? start[0] : finish[0],
-            east = (start[0] < finish[0]) ? finish[0] : start[0],
-            wsLine = new ymaps.Polyline([
-                [west, south],
-                [west - xDelta, south - yDelta]
-            ]),
-            enLine = new ymaps.Polyline([
-                [east, north],
-                [east + xDelta, north + yDelta]
-            ]);
-        self._myCollection.add(wsLine);
-        self._myCollection.add(enLine);
+    YandexDelivery.prototype.getBounds = function(self) {
+        var bounds, panelHeight, newbounds, deltaX, deltaY, deltaPanel;
         if (self._route) {
             self._myCollection.add(self._route);
+            self._deliveryMap.geoObjects.add(self._myCollection);
         }
-        self._deliveryMap.geoObjects.add(self._myCollection);
-        self._deliveryMap.setBounds(self._myCollection.getBounds());
-        self._myCollection.remove(wsLine);
-        self._myCollection.remove(enLine);
+        bounds = self._myCollection.getBounds();
+        console.log(bounds);
+        deltaY = Math.abs(bounds[0][1] - bounds[1][1]) / 10;
+        deltaX = Math.abs(bounds[0][0] - bounds[1][0]) / 10;
+        panelHeight = $('#yandex-delivery-result').height();
+        console.log(panelHeight);
+        deltaPanel = deltaY / ($(self.element).height() - panelHeight) * panelHeight * 20;
+        console.log(deltaPanel);
+        newbounds = [
+            [
+                bounds[0][0] - deltaX,
+                bounds[0][1] - deltaPanel - deltaY
+            ],
+            [
+                bounds[1][0] + deltaX,
+                bounds[1][1] + deltaY
+            ]
+        ];
+        console.log(newbounds);
+        self._deliveryMap.setBounds(newbounds);
     }
     YandexDelivery.prototype.initRegionsFilter = function(self) {
         ymaps.regions.load('RU', {
@@ -259,9 +272,9 @@ jQuery(document).ready(function() {
                     opacity: 0.7
                 });
                 //self._finish.properties.set('balloonContent', address + message.replace('%s', self.calculate(distance)));
-                $('#yandex-delivery-result').html(address + message.replace('%s', self.calculate(distance)));
+                $('#yandex-delivery-result').html(address + message.replace('%s', self.calculate(distance)) + '<ymaps class="ymaps-2-1-14-balloon__close"><ymaps class="ymaps-2-1-14-balloon__close-button"></ymaps></ymaps>');
                 $('#yandex-delivery-result').toggle();
-                self.getBounds(self, start, finish);                
+                self.getBounds(self);
             }, function() {
                 console.log('Unable to route');
             });
