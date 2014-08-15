@@ -105,16 +105,31 @@ jQuery(document).ready(function() {
                 }
                 self._myCollection = new ymaps.GeoObjectCollection();
                 self._regions = new ymaps.GeoObjectCollection();
-                $(self.element).css('position', 'relative').append('<div id="yandex-delivery-result"></div>');
+                $(self.element).css('position', 'relative').append('<div id="yandex-delivery-result"><div id="result-data"></div><div id="result-close">×</div></div>');
                 $('#yandex-delivery-result').css({
                     'position': 'absolute',
                     'bottom': '0',
-                    'background-color': 'white',
-                    'width': '100%',
+                    'background-color': 'rgba(256, 256, 256, .85)',
+                    'width': ($(self.element).width() - 22) + 'px',
                     'padding': '10px',
                     'border': 'solid 1px lightgrey'
                 }).toggle();
-                $('#yandex-delivery-result ymaps').click(function() {
+                $('#result-data').css({
+                    'float': 'left',
+                });
+                $('#result-close').css({
+                    'float': 'right',
+                    'width': '20px',
+                    'font-size': '24px',
+                    'color': 'lightgrey',
+                    'cursor': 'pointer'
+                });
+                $('#result-close').hover(function() {
+                    $('#result-close').css('color', 'grey');
+                }, function() {
+                    $('#result-close').css('color', 'lightgrey');
+                });
+                $('#result-close').click(function() {
                     console.log(123);
                     $('#yandex-delivery-result').toggle();
                 });
@@ -208,30 +223,33 @@ jQuery(document).ready(function() {
         });
     }
     YandexDelivery.prototype.getBounds = function(self) {
-        var bounds, panelHeight, newbounds, deltaX, deltaY, deltaPanel;
+        var bounds, panelHeight, newbounds, deltaY, deltaPanel;
         if (self._route) {
             self._myCollection.add(self._route);
             self._deliveryMap.geoObjects.add(self._myCollection);
         }
         bounds = self._myCollection.getBounds();
-        console.log(bounds);
-        deltaY = Math.abs(bounds[0][1] - bounds[1][1]) / 10;
-        deltaX = Math.abs(bounds[0][0] - bounds[1][0]) / 10;
+        // console.log(bounds);
+        deltaY = Math.abs(bounds[0][1] - bounds[1][1]);
         panelHeight = $('#yandex-delivery-result').height();
-        console.log(panelHeight);
-        deltaPanel = deltaY / ($(self.element).height() - panelHeight) * panelHeight * 20;
-        console.log(deltaPanel);
+        // console.log(panelHeight);
+        // console.log($(self.element).height() - panelHeight);
+        deltaPanel = deltaY / ($(self.element).height() - panelHeight) * panelHeight;
+        // console.log(deltaPanel);
         newbounds = [
             [
-                bounds[0][0] - deltaX,
-                bounds[0][1] - deltaPanel - deltaY
+                bounds[0][0] - deltaPanel,
+                bounds[0][1]
             ],
             [
-                bounds[1][0] + deltaX,
-                bounds[1][1] + deltaY
+                bounds[1][0],
+                bounds[1][1]
             ]
         ];
-        console.log(newbounds);
+        // console.log(newbounds);
+        // self._myCollection.add( new ymaps.Polyline([[bounds[0][0], bounds[0][1]], [bounds[1][0],bounds[1][1]]]));
+        // self._myCollection.add( new ymaps.Polyline([[bounds[0][0] - deltaPanel, bounds[0][1]], [bounds[1][0],bounds[1][1]]]));
+        // self._deliveryMap.geoObjects.add(self._myCollection);
         self._deliveryMap.setBounds(newbounds);
     }
     YandexDelivery.prototype.initRegionsFilter = function(self) {
@@ -272,8 +290,10 @@ jQuery(document).ready(function() {
                     opacity: 0.7
                 });
                 //self._finish.properties.set('balloonContent', address + message.replace('%s', self.calculate(distance)));
-                $('#yandex-delivery-result').html(address + message.replace('%s', self.calculate(distance)) + '<ymaps class="ymaps-2-1-14-balloon__close"><ymaps class="ymaps-2-1-14-balloon__close-button"></ymaps></ymaps>');
-                $('#yandex-delivery-result').toggle();
+                $('#result-data').html(address + message.replace('%s', self.calculate(distance)));
+                if (!$('#yandex-delivery-result').is(":visible")) {
+                    $('#yandex-delivery-result').toggle();
+                }
                 self.getBounds(self);
             }, function() {
                 console.log('Unable to route');
