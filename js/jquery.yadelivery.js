@@ -35,6 +35,7 @@ jQuery(document).ready(function() {
     });
 });
 (function($, window, document, undefined) {
+    'use strict';
     var pluginName = 'yandexDelivery',
         defaults = {
             center: [56.2, 40.6],
@@ -53,12 +54,13 @@ jQuery(document).ready(function() {
         this._route = null;
         this._companyName = this.options.companyName || 'Точка отправки';
         this._myCollection = null;
-        self._regions = null;
+        this._regions = null;
         this.init();
     }
     YandexDelivery.prototype.init = function() {
         var self = this,
-            mapId = $(this.element).attr('id');
+            mapId = $(this.element).attr('id'),
+            searchFinishPoint, searchStartPoint;
         $.getScript("http://api-maps.yandex.ru/2.1.14/?lang=ru_RU", function() {
             ymaps.ready(function() {
                 self._deliveryMap = new ymaps.Map(mapId, {
@@ -68,13 +70,13 @@ jQuery(document).ready(function() {
                     behaviors: ['drag'],
                     controls: ['zoomControl']
                 }),
-                searchFinishPoint = new ymaps.control.SearchControl({
+                searchStartPoint = new ymaps.control.SearchControl({
                     options: {
                         useMapBounds: true,
                         noCentering: true,
                         noPopup: false,
                         noPlacemark: true,
-                        placeholderContent: 'Адрес конечной точки',
+                        placeholderContent: 'Адрес точки отправки',
                         size: 'large',
                         float: 'none',
                         position: {
@@ -82,7 +84,25 @@ jQuery(document).ready(function() {
                             top: 10
                         }
                     }
-                }),
+                }),                
+                searchFinishPoint = new ymaps.control.SearchControl({
+                    options: {
+                        useMapBounds: true,
+                        noCentering: true,
+                        noPopup: false,
+                        noPlacemark: true,
+                        placeholderContent: 'Адрес точки доставки',
+                        size: 'large',
+                        float: 'none',
+                        position: {
+                            left: 10,
+                            top: (!self.options.address) ? 50 : 10
+                        }
+                    }
+                });
+                if (!self.options.address) {
+                    self._deliveryMap.controls.add(searchStartPoint);    
+                }
                 self._deliveryMap.controls.add(searchFinishPoint);
                 searchFinishPoint.events.add('resultselect', function(e) {
                     var results = searchFinishPoint.getResultsArray(),
@@ -130,7 +150,6 @@ jQuery(document).ready(function() {
                     $('#result-close').css('color', 'lightgrey');
                 });
                 $('#result-close').click(function() {
-                    console.log(123);
                     $('#yandex-delivery-result').toggle();
                 });
             });
@@ -177,7 +196,7 @@ jQuery(document).ready(function() {
                 balloonContent: this._companyName
             }, {
                 preset: 'islands#greenStretchyIcon',
-                balloonPanelMaxMapArea: 0,
+                draggable: !Boolean(this.options.address)
             });
             this._deliveryMap.geoObjects.add(this._start);
             //this._start.balloon.open();
@@ -229,13 +248,9 @@ jQuery(document).ready(function() {
             self._deliveryMap.geoObjects.add(self._myCollection);
         }
         bounds = self._myCollection.getBounds();
-        // console.log(bounds);
         deltaY = Math.abs(bounds[0][1] - bounds[1][1]);
         panelHeight = $('#yandex-delivery-result').height();
-        // console.log(panelHeight);
-        // console.log($(self.element).height() - panelHeight);
         deltaPanel = deltaY / ($(self.element).height() - panelHeight) * panelHeight;
-        // console.log(deltaPanel);
         newbounds = [
             [
                 bounds[0][0] - deltaPanel,
@@ -246,10 +261,6 @@ jQuery(document).ready(function() {
                 bounds[1][1]
             ]
         ];
-        // console.log(newbounds);
-        // self._myCollection.add( new ymaps.Polyline([[bounds[0][0], bounds[0][1]], [bounds[1][0],bounds[1][1]]]));
-        // self._myCollection.add( new ymaps.Polyline([[bounds[0][0] - deltaPanel, bounds[0][1]], [bounds[1][0],bounds[1][1]]]));
-        // self._deliveryMap.geoObjects.add(self._myCollection);
         self._deliveryMap.setBounds(newbounds);
     }
     YandexDelivery.prototype.initRegionsFilter = function(self) {
@@ -259,7 +270,7 @@ jQuery(document).ready(function() {
         }).then(function(result) {
             var regions = result.geoObjects;
             regions.each(function(reg) {
-                if (self.inArray(reg.properties.get('osmId'), self.options.regionsAllowed)) {
+                if (self.options.regionsAllowed.indexOf(+ reg.properties.get('osmId')) !== -1) {
                     self._regions.add(new ymaps.GeoObject(reg, {
                         fillColor: '00B359',
                         strokeWidth: 1,
@@ -290,7 +301,7 @@ jQuery(document).ready(function() {
                     opacity: 0.7
                 });
                 //self._finish.properties.set('balloonContent', address + message.replace('%s', self.calculate(distance)));
-                $('#result-data').html(address + message.replace('%s', self.calculate(distance)));
+                $('#result-data').html($("<div>" + address + "</div>").find('h3').text() + ' ' + $("<div>" + address + "</div>").find('p').text() + message.replace('%s', self.calculate(distance)));
                 if (!$('#yandex-delivery-result').is(":visible")) {
                     $('#yandex-delivery-result').toggle();
                 }
@@ -299,12 +310,6 @@ jQuery(document).ready(function() {
                 console.log('Unable to route');
             });
         });
-    }
-    YandexDelivery.prototype.inArray = function(value, array) {
-        for (var i = 0; i < array.length; i++) {
-            if (array[i] == value) return true;
-        }
-        return false;
     }
     $.fn[pluginName] = function(options) {
         return this.each(function() {
