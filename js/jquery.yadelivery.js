@@ -1,5 +1,10 @@
 jQuery(document).ready(function() {
     $("#map").yandexDelivery({
+        price: [
+            [0, 0],
+            [500, 55],
+            [1000, 100]
+        ],
         center: [56.2, 40.6],
         address: 'Россия, Костромская область, Чухломский район, деревня Чертово',
         companyName: 'Компания «Строй город 44»',
@@ -61,7 +66,7 @@ jQuery(document).ready(function() {
         var self = this,
             mapId = $(this.element).attr('id'),
             searchFinishPoint, searchStartPoint;
-        $.getScript("http://api-maps.yandex.ru/2.1.14/?lang=ru_RU", function() {
+        $.getScript("http://api-maps.yandex.ru/2.1/?lang=ru_RU", function() {
             ymaps.ready(function() {
                 self._deliveryMap = new ymaps.Map(mapId, {
                     center: self.options.center,
@@ -76,7 +81,7 @@ jQuery(document).ready(function() {
                         noCentering: true,
                         noPopup: false,
                         noPlacemark: true,
-                        placeholderContent: 'Адрес точки отправки',
+                        placeholderContent: 'Адрес отправки',
                         size: 'large',
                         float: 'none',
                         position: {
@@ -84,14 +89,14 @@ jQuery(document).ready(function() {
                             top: 10
                         }
                     }
-                }),                
+                }),
                 searchFinishPoint = new ymaps.control.SearchControl({
                     options: {
                         useMapBounds: true,
                         noCentering: true,
                         noPopup: false,
                         noPlacemark: true,
-                        placeholderContent: 'Адрес точки доставки',
+                        placeholderContent: 'Адрес доставки',
                         size: 'large',
                         float: 'none',
                         position: {
@@ -101,7 +106,17 @@ jQuery(document).ready(function() {
                     }
                 });
                 if (!self.options.address) {
-                    self._deliveryMap.controls.add(searchStartPoint);    
+                    self._deliveryMap.controls.add(searchStartPoint);
+                    searchStartPoint.events.add('resultselect', function(e) {
+                        var results = searchStartPoint.getResultsArray(),
+                            selected = e.get('index'),
+                            point = results[selected].geometry.getCoordinates();
+                        self.setStartPoint(point);
+                    }).add('load', function(event) {
+                        if (!event.get('skip') && searchStartPoint.getResultsCount()) {
+                            self.searchStartPoint.showResult(0);
+                        }
+                    });
                 }
                 self._deliveryMap.controls.add(searchFinishPoint);
                 searchFinishPoint.events.add('resultselect', function(e) {
@@ -110,13 +125,11 @@ jQuery(document).ready(function() {
                         point = results[selected].geometry.getCoordinates();
                     self.setFinishPoint(point);
                 }).add('load', function(event) {
-                    // По полю skip определяем, что это не дозагрузка данных.
-                    // По getRusultsCount определяем, что есть хотя бы 1 результат.
                     if (!event.get('skip') && searchFinishPoint.getResultsCount()) {
                         self.searchFinishPoint.showResult(0);
                     }
                 });
-                if (self.options.regionsAllowed.length != 0) {
+                if (self.options.regionsAllowed.length !== 0) {
                     self.initRegionsFilter(self);
                 }
                 self._deliveryMap.events.add('click', self._onClick, self);
@@ -135,7 +148,7 @@ jQuery(document).ready(function() {
                     'border': 'solid 1px lightgrey'
                 }).toggle();
                 $('#result-data').css({
-                    'float': 'left',
+                    'float': 'left'
                 });
                 $('#result-close').css({
                     'float': 'right',
@@ -152,34 +165,27 @@ jQuery(document).ready(function() {
                 $('#result-close').click(function() {
                     $('#yandex-delivery-result').toggle();
                 });
+                $('.ymaps-copyright__content-cell').toggle();
             });
         });
     };
     YandexDelivery.prototype._onClick = function(e) {
         if (this._start) {
-            if (this._route) {
-                this._deliveryMap.geoObjects.remove(this._route);
-            }
             this.setFinishPoint(e.get('coords'));
         } else {
-            if (this.options.address) {
-                this.initStartPoint(self);
-            } else {
-                this.setStartPoint(e.get('coords'));
-            }
+            this.setStartPoint(e.get('coords'));
         }
     };
     YandexDelivery.prototype._onDragEnd = function(e) {
         this.getDirection();
-    }
+    };
     YandexDelivery.prototype.getDirection = function() {
         if (this._route) {
             this._myCollection.remove(this._route);
             this._route = null;
         }
         if (this._start && this._finish) {
-            var self = this,
-                start = this._start.geometry.getCoordinates(),
+            var start = this._start.geometry.getCoordinates(),
                 finish = this._finish.geometry.getCoordinates();
             this.setDeliveryInformation(start, finish, this);
         }
@@ -193,11 +199,12 @@ jQuery(document).ready(function() {
             }
             this._start = new ymaps.Placemark(position, {
                 iconContent: this._companyName,
-                balloonContent: this._companyName
+                balloonContent: (this.options.address) ? this._companyName : 'Точка отправки '
             }, {
                 preset: 'islands#greenStretchyIcon',
-                draggable: !Boolean(this.options.address)
+                draggable: !Boolean((this.options.address))
             });
+            this._start.events.add('dragend', this._onDragEnd, this);
             this._deliveryMap.geoObjects.add(this._start);
             //this._start.balloon.open();
         }
@@ -210,7 +217,7 @@ jQuery(document).ready(function() {
             this._finish.geometry.setCoordinates(position);
         } else {
             this._finish = new ymaps.Placemark(position, {
-                iconContent: 'Точка доставки',
+                iconContent: 'Точка доставки'
             }, {
                 preset: 'islands#brownStretchyIcon',
                 draggable: true
@@ -223,24 +230,28 @@ jQuery(document).ready(function() {
             this.getDirection();
         }
     };
-    YandexDelivery.prototype.calculate = function(len) {
-        // Константы.
-        var DELIVERY_TARIF = 20,
-            MINIMUM_COST = 500;
-        return Math.max(len * DELIVERY_TARIF, MINIMUM_COST);
+    YandexDelivery.prototype.calculate = function(len, self) {
+        var totalPrice = 0;
+        for (var circles = self.options.price.length; circles > 0; circles--) {
+            if (len > self.options.price[circles - 1][0]) {
+                totalPrice += (len - self.options.price[circles - 1][0]) * self.options.price[circles - 1][1];
+                len = self.options.price[circles - 1][0];
+            }
+        }
+        return totalPrice;
     };
     YandexDelivery.prototype.initStartPoint = function(self) {
         function getAll(place, setStart) {
             ymaps.geocode(place).then(function(res) {
                 setStart(res.geoObjects.get(0).geometry.getCoordinates());
             }, function(err) {
-                alert('Ошибка');
+                alert('Ошибка, не удалось геокодировать адрес');
             });
         }
         getAll(this.options.address, function(res) {
             self.setStartPoint(res);
         });
-    }
+    };
     YandexDelivery.prototype.getBounds = function(self) {
         var bounds, panelHeight, newbounds, deltaY, deltaPanel;
         if (self._route) {
@@ -262,7 +273,7 @@ jQuery(document).ready(function() {
             ]
         ];
         self._deliveryMap.setBounds(newbounds);
-    }
+    };
     YandexDelivery.prototype.initRegionsFilter = function(self) {
         ymaps.regions.load('RU', {
             lang: 'ru',
@@ -270,7 +281,7 @@ jQuery(document).ready(function() {
         }).then(function(result) {
             var regions = result.geoObjects;
             regions.each(function(reg) {
-                if (self.options.regionsAllowed.indexOf(+ reg.properties.get('osmId')) !== -1) {
+                if (self.options.regionsAllowed.indexOf(+reg.properties.get('osmId')) !== -1) {
                     self._regions.add(new ymaps.GeoObject(reg, {
                         fillColor: '00B359',
                         strokeWidth: 1,
@@ -284,38 +295,59 @@ jQuery(document).ready(function() {
         }, function() {
             //
         });
-    }
+    };
     YandexDelivery.prototype.setDeliveryInformation = function(start, finish, self) {
-        ymaps.geocode(start, {
-            results: 1
-        }).then(function(geocode) {
-            var address = geocode.geoObjects.get(0) && geocode.geoObjects.get(0).properties.get('balloonContentBody') || '';
+        var objects = ymaps.geoQuery(ymaps.geocode(start)).add(ymaps.geocode(finish));
+        objects.then(function() {
+            var addressStart = objects.get(0) && objects.get(0).properties.get('balloonContentBody') || '';
+            var addressFinish = objects.get(5) && objects.get(5).properties.get('balloonContentBody') || '';
+            var regular = /<.*>(.+)<\/.*>(.+)<\/.*>/;
+            self._start.properties.set('balloonContent', addressStart);
+            self._finish.properties.set('balloonContent', addressFinish);
             ymaps.route([start, finish]).then(function(router) {
                 var distance = Math.round(router.getLength() / 1000),
-                    message = '<span>Расстояние: ' + distance + 'км.</span><br/>' + '<span style="font-weight: bold; font-style: italic">Стоимость доставки: %sр.</span>';
+                    message = '<b>Расстояние:</b> ' + distance + ' км<br/>' + '<span style="font-size: 150%;"><b>Стоимость доставки:</b> %s руб</span>';
                 self._route = router.getPaths();
-                var localRoute = router.getPaths();
                 self._route.options.set({
                     strokeWidth: 4,
                     strokeColor: '002311',
                     opacity: 0.7
                 });
-                //self._finish.properties.set('balloonContent', address + message.replace('%s', self.calculate(distance)));
-                $('#result-data').html($("<div>" + address + "</div>").find('h3').text() + ' ' + $("<div>" + address + "</div>").find('p').text() + message.replace('%s', self.calculate(distance)));
+                self.getBounds(self);
+                self.isPointInRerions(self, finish);
+                addressStart = '<b>Адрес отправки:</b> ' + addressStart.replace(regular, "$1, $2") + '<br>';
+                addressFinish = '<b>Адрес   доставки:</b> ' + addressFinish.replace(regular, "$1, $2") + '<br>';
+                addressStart = (self.isPointInRerions(self, start)) ? addressStart : '<span style="color: red;">' + addressStart + '</span>';
+                addressFinish = (self.isPointInRerions(self, finish)) ? addressFinish : '<span  style="color: red;">' + addressFinish + '</span>';
+                $('#result-data').html(addressStart + addressFinish + message.replace('%s', self.calculate(distance, self)));
                 if (!$('#yandex-delivery-result').is(":visible")) {
                     $('#yandex-delivery-result').toggle();
                 }
-                self.getBounds(self);
             }, function() {
-                console.log('Unable to route');
+                $('#result-data').html('<span style="font-size: 150%; color: red;">Невозможно построить маршрут!</span>');
+                if (!$('#yandex-delivery-result').is(":visible")) {
+                    $('#yandex-delivery-result').toggle();
+                }
             });
         });
-    }
+    };
+    YandexDelivery.prototype.isPointInRerions = function(self, point) {
+        var state = true;
+        if (self.options.regionsAllowed.length !== 0) {
+            state = false;
+            self._regions.each(function(region) {
+                if (ymaps.geoQuery(region).searchContaining(point).getLength() !== 0) {
+                    state = true;
+                }
+            });
+        }
+        return state;
+    };
     $.fn[pluginName] = function(options) {
         return this.each(function() {
             if (!$.data(this, 'plugin_' + pluginName)) {
                 $.data(this, 'plugin_' + pluginName, new YandexDelivery(this, options));
             }
         });
-    }
-})(jQuery, window, document)
+    };
+})(jQuery, window, document);
