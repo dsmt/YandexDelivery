@@ -202,7 +202,7 @@ jQuery(document).ready(function() {
                 balloonContent: (this.options.address) ? this._companyName : 'Точка отправки '
             }, {
                 preset: 'islands#greenStretchyIcon',
-                draggable: !Boolean((this.options.address))
+                draggable: !Boolean(this.options.address)
             });
             this._start.events.add('dragend', this._onDragEnd, this);
             this._deliveryMap.geoObjects.add(this._start);
