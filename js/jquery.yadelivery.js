@@ -6,7 +6,7 @@ jQuery(document).ready(function() {
         ],
         center: [56.2, 40.6],
         address: 'Россия, Костромская область, Чухломский район, деревня Чертово',
-        companyName: 'Компания «Строй город 44»',
+        pointA: 'Компания «Строй город 44»',
         regionsAllowed: [
             51490, // Московская область
             102269, // Москва
@@ -32,7 +32,7 @@ jQuery(document).ready(function() {
             115114, // Марий Эл
             71950 // Рязанская область
         ]
-    }).css({'font-size': '80%'});
+    });
 });
 (function($, window, document, undefined) {
     'use strict';
@@ -40,7 +40,11 @@ jQuery(document).ready(function() {
         defaults = {
             center: [56.2, 40.6],
             address: null,
-            companyName: null,
+            pointA: 'Точка отправки',
+            pointB: 'Точка доставки',
+            addressA: 'Адрес отправки',
+            addressB: 'Адрес доставки',
+            outOfRegion: '&#x2A;&thinsp;уточните возможность доставки',
             regionsAllowed: [],
             routeStyle: {
                 strokeWidth: 4,
@@ -63,10 +67,10 @@ jQuery(document).ready(function() {
         this._deliveryMap = null;
         this._start = null;
         this._route = null;
-        this._companyName = this.options.companyName || 'Точка отправки';
         this._myCollection = null;
         this._regions = null;
         this._routing = false;
+        this._outOfRegion = '';
         this.init();
     }
     YandexDelivery.prototype.init = function() {
@@ -88,7 +92,7 @@ jQuery(document).ready(function() {
                         noCentering: true,
                         noPopup: false,
                         noPlacemark: true,
-                        placeholderContent: 'Адрес отправки',
+                        placeholderContent: self.options.addressA,
                         size: 'large',
                         float: 'none',
                         position: {
@@ -103,7 +107,7 @@ jQuery(document).ready(function() {
                         noCentering: true,
                         noPopup: false,
                         noPlacemark: true,
-                        placeholderContent: 'Адрес доставки',
+                        placeholderContent: self.options.addressB,
                         size: 'large',
                         float: 'none',
                         position: {
@@ -206,7 +210,7 @@ jQuery(document).ready(function() {
             if (this._start && this._finish) {
                 var start = this._start.geometry.getCoordinates(),
                     finish = this._finish.geometry.getCoordinates();
-                this.setDeliveryInformation(start, finish, this);
+                this.setDeliveryInformation(this, start, finish);
             }
         }
     };
@@ -218,8 +222,8 @@ jQuery(document).ready(function() {
                 this.initStartPoint(self);
             }
             this._start = new ymaps.Placemark(position, {
-                iconContent: this._companyName,
-                balloonContent: (this.options.address) ? this._companyName : 'Точка отправки '
+                iconContent: this.options.pointA,
+                balloonContent: this.options.pointA
             }, {
                 preset: 'islands#greenStretchyIcon',
                 draggable: !Boolean(this.options.address)
@@ -237,7 +241,7 @@ jQuery(document).ready(function() {
             this._finish.geometry.setCoordinates(position);
         } else {
             this._finish = new ymaps.Placemark(position, {
-                iconContent: 'Точка доставки'
+                iconContent: this.options.pointB
             }, {
                 preset: 'islands#brownStretchyIcon',
                 draggable: true
@@ -250,12 +254,12 @@ jQuery(document).ready(function() {
             this.getDirection();
         }
     };
-    YandexDelivery.prototype.calculate = function(len, self) {
+    YandexDelivery.prototype.calculate = function(self, length) {
         var totalPrice = 0;
         for (var steps = self.options.tarif.length; steps > 0; steps--) {
-            if (len > self.options.tarif[steps - 1][0]) {
-                totalPrice += (len - self.options.tarif[steps - 1][0]) * self.options.tarif[steps - 1][1];
-                len = self.options.tarif[steps - 1][0];
+            if (length > self.options.tarif[steps - 1][0]) {
+                totalPrice += (length - self.options.tarif[steps - 1][0]) * self.options.tarif[steps - 1][1];
+                length = self.options.tarif[steps - 1][0];
             }
         }
         return totalPrice.toString().replace(/(\d)(?=(\d\d\d)+([^\d]|$))/g, "$1&thinsp;");
@@ -311,7 +315,7 @@ jQuery(document).ready(function() {
             //
         });
     };
-    YandexDelivery.prototype.setDeliveryInformation = function(start, finish, self) {
+    YandexDelivery.prototype.setDeliveryInformation = function(self, start, finish) {
         var objects = ymaps.geoQuery(ymaps.geocode(start)).add(ymaps.geocode(finish));
         objects.then(function() {
             var addressStart = objects.get(0) && objects.get(0).properties.get('balloonContentBody') || '';
@@ -326,11 +330,11 @@ jQuery(document).ready(function() {
                 self._route.options.set(self.options.routeStyle);
                 self.getBounds(self);
                 self.isPointInRerions(self, finish);
-                addressStart = '<b>Адрес отправки:</b> ' + addressStart.replace(regular, "$1, $2") + '<br>';
-                addressFinish = '<b>Адрес   доставки:</b> ' + addressFinish.replace(regular, "$1, $2") + '<br>';
+                addressStart = '<b>' + self.options.addressA + ':</b> ' + addressStart.replace(regular, "$1, $2") + '<br/>';
+                addressFinish = '<b>' + self.options.addressB + ':</b> ' + addressFinish.replace(regular, "$1, $2") + '<br/>';
                 addressStart = (self.isPointInRerions(self, start)) ? addressStart : '<span style="color: red;">' + addressStart + '</span>';
                 addressFinish = (self.isPointInRerions(self, finish)) ? addressFinish : '<span  style="color: red;">' + addressFinish + '</span>';
-                $('#result-data').html(addressStart + addressFinish + message.replace('%s', self.calculate(distance, self)));
+                $('#result-data').html(addressStart + addressFinish + message.replace('%s', self.calculate(self, distance)) + self._outOfRegion);
                 if (!$('#yandex-delivery-result').is(":visible")) {
                     $('#yandex-delivery-result').toggle();
                 }
@@ -356,6 +360,7 @@ jQuery(document).ready(function() {
                 }
             });
         }
+        self._outOfRegion = (!state) ? '<br/><span  style="color: red;">' + self.options.outOfRegion + '</span>' : '';
         return state;
     };
     $.fn[pluginName] = function(options) {
