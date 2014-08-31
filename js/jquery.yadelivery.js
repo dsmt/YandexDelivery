@@ -60,6 +60,7 @@ jQuery(document).ready(function() {
         };
 
     function YandexDelivery(element, options) {
+        var self = this;
         this.element = element;
         this.options = $.extend({}, defaults, options);
         this._defaults = defaults;
@@ -71,6 +72,12 @@ jQuery(document).ready(function() {
         this._regions = null;
         this._routing = false;
         this._outOfRegion = '';
+        this._id = '-' + $(element).attr('id');
+        $(window).resize(function() {
+            $('#yandex-delivery-result' + self._id).css({                
+                'width': $(self.element).width()
+            });
+        });        
         this.init();
     }
     YandexDelivery.prototype.init = function() {
@@ -150,34 +157,35 @@ jQuery(document).ready(function() {
                 self._myCollection = new ymaps.GeoObjectCollection();
                 self._regions = new ymaps.GeoObjectCollection();
                 self._deliveryMap.cursors.push('pointer')
-                $(self.element).css('position', 'relative').append('<div id="yandex-delivery-result"><div id="result-data"></div><div id="result-close">×</div></div><div id="loader"></div>');
-                $('#yandex-delivery-result').css({
+                $(self.element).css('position', 'relative').append('<div id="yandex-delivery-result' + self._id + '"><div id="result-close' + self._id + '">×</div><div id="result-data' + self._id + '"></div></div><div id="loader' + self._id + '"></div>');
+                $('#yandex-delivery-result' + self._id).css({
                     'position': 'absolute',
                     'bottom': '0',
                     'background-color': 'rgba(256, 256, 256, .85)',
-                    'width': ($(self.element).width() - 22) + 'px',
                     'padding': '10px',
-                    'border': 'solid 1px lightgrey'
+                    'border': 'solid 1px lightgrey',
                 }).toggle();
-                $('#result-data').css({
-                    'float': 'left'
+                $('#result-data' + self._id).css({
+                    'margin-right': '30px'
                 });
-                $('#result-close').css({
-                    'float': 'right',
+                $('#result-close' + self._id).css({
                     'width': '20px',
+                    'padding-left': '10px',
                     'font-size': '24px',
                     'color': 'lightgrey',
-                    'cursor': 'pointer'
+                    'cursor': 'pointer',
+                    'float': 'right',
+                    'line-height': '4px'
                 });
-                $('#result-close').hover(function() {
-                    $('#result-close').css('color', 'grey');
+                $('#result-close' + self._id).hover(function() {
+                    $('#result-close' + self._id).css('color', 'grey');
                 }, function() {
-                    $('#result-close').css('color', 'lightgrey');
+                    $('#result-close' + self._id).css('color', 'lightgrey');
                 });
-                $('#result-close').click(function() {
-                    $('#yandex-delivery-result').toggle();
+                $('#result-close' + self._id).click(function() {
+                    $('#yandex-delivery-result' + self._id).toggle();
                 });
-                $('.ymaps-copyright__content-cell').toggle();
+                $('.ymaps-copyright__content-cell' + self._id).toggle();
                 $('#loader').css({
                     'position': 'absolute',
                     'top': '0',
@@ -185,7 +193,7 @@ jQuery(document).ready(function() {
                     'width': '100%',
                     'z-index': '100'
                 });
-                $('#loader').toggle();
+                $('#loader' + self._id).toggle();
             });
         });
     };
@@ -334,19 +342,22 @@ jQuery(document).ready(function() {
                 addressFinish = '<b>' + self.options.addressB + ':</b> ' + addressFinish.replace(regular, "$1, $2") + '<br/>';
                 addressStart = (self.isPointInRerions(self, start)) ? addressStart : '<span style="color: red;">' + addressStart + '</span>';
                 addressFinish = (self.isPointInRerions(self, finish)) ? addressFinish : '<span  style="color: red;">' + addressFinish + '</span>';
-                $('#result-data').html(addressStart + addressFinish + message.replace('%s', self.calculate(self, distance)) + self._outOfRegion);
-                if (!$('#yandex-delivery-result').is(":visible")) {
-                    $('#yandex-delivery-result').toggle();
+                $('#yandex-delivery-result' + self._id).css({
+                    'width': $(self.element).width()
+                });
+                $('#result-data' + self._id).html(addressStart + addressFinish + message.replace('%s', self.calculate(self, distance)) + self._outOfRegion);
+                if (!$('#yandex-delivery-result' + self._id).is(":visible")) {
+                    $('#yandex-delivery-result' + self._id).toggle();
                 }
                 self._routing = false;
-                $('#loader').toggle();
+                $('#loader' + self._id).toggle();
             }, function() {
-                $('#result-data').html('<span style="font-size: 150%; color: red;">Невозможно построить маршрут!</span>');
-                if (!$('#yandex-delivery-result').is(":visible")) {
-                    $('#yandex-delivery-result').toggle();
+                $('#result-data' + self._id).html('<span style="font-size: 150%; color: red;">Невозможно построить маршрут!</span>');
+                if (!$('#yandex-delivery-result' + self._id).is(":visible")) {
+                    $('#yandex-delivery-result' + self._id).toggle();
                 }
                 self._routing = false;
-                $('#loader').toggle();
+                $('#loader' + self._id).toggle();
             });
         });
     };
