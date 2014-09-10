@@ -1,40 +1,4 @@
-jQuery(document).ready(function() {
-    $("#map").yandexDelivery({
-        tarif: [
-            [0, 0],
-            [500, 55]
-        ],
-        center: [56.2, 40.6],
-        address: 'Россия, Костромская область, Чухломский район, деревня Чертово',
-        pointA: 'Компания «Строй город 44»',
-        regionsAllowed: [
-            51490, // Московская область
-            102269, // Москва
-            115106, // Вологодская область
-            85963, // Костромская область
-            2095259, // Тверская область
-            85617, // Ивановская область
-            81995, // Калужская область
-            81994, // Ярославская область
-            72197, // Владимирская область
-            81993, // Тульская область
-            81996, // Смоленская область
-            72195, // Нижегородская область
-            115100, // Кировская область
-            89331, //Новгородская область
-            81997, // Брянская область
-            72224, // Орловская область
-            72169, // Липецкая область
-            72180, // Тамбовская область
-            72182, // Пензенская область
-            72196, // Республика Мордовия
-            80513, // Чувашия
-            115114, // Марий Эл
-            71950 // Рязанская область
-        ]
-    });
-});
-(function($, window, document, undefined) {
+;(function($, window, document, undefined) {
     'use strict';
     var pluginName = 'yandexDelivery',
         defaults = {
@@ -74,10 +38,10 @@ jQuery(document).ready(function() {
         this._outOfRegion = '';
         this._id = '-' + $(element).attr('id');
         $(window).resize(function() {
-            $('#yandex-delivery-result' + self._id).css({                
-                'width': $(self.element).width()
+            $('#yandex-delivery-result' + self._id).css({
+                'width': $(self.element).width() + 'px'
             });
-        });        
+        });
         this.init();
     }
     YandexDelivery.prototype.init = function() {
@@ -156,26 +120,27 @@ jQuery(document).ready(function() {
                 }
                 self._myCollection = new ymaps.GeoObjectCollection();
                 self._regions = new ymaps.GeoObjectCollection();
-                self._deliveryMap.cursors.push('pointer')
-                $(self.element).css('position', 'relative').append('<div id="yandex-delivery-result' + self._id + '"><div id="result-close' + self._id + '">×</div><div id="result-data' + self._id + '"></div></div><div id="loader' + self._id + '"></div>');
+                self._deliveryMap.cursors.push('pointer');
+                $(self.element).css('position', 'relative').append('<div id="yandex-delivery-result' + self._id + '"><div id="inner' + self._id + '"><div id="result-close' + self._id + '">×</div><div id="result-data' + self._id + '"></div></div></div><div id="loader' + self._id + '"></div>');
                 $('#yandex-delivery-result' + self._id).css({
                     'position': 'absolute',
                     'bottom': '0',
-                    'background-color': 'rgba(256, 256, 256, .85)',
-                    'padding': '10px',
-                    'border': 'solid 1px lightgrey',
+                    'background-color': 'rgba(256, 256, 256, .85)'                    
                 }).toggle();
                 $('#result-data' + self._id).css({
                     'margin-right': '30px'
                 });
                 $('#result-close' + self._id).css({
-                    'width': '20px',
-                    'padding-left': '10px',
+                    'padding': '5px 0 0 0',
                     'font-size': '24px',
                     'color': 'lightgrey',
                     'cursor': 'pointer',
                     'float': 'right',
                     'line-height': '4px'
+                });
+                $('#inner' + self._id).css({
+                    'padding': '10px',
+                    'border': 'solid 1px lightgrey'
                 });
                 $('#result-close' + self._id).hover(function() {
                     $('#result-close' + self._id).css('color', 'grey');
@@ -185,7 +150,7 @@ jQuery(document).ready(function() {
                 $('#result-close' + self._id).click(function() {
                     $('#yandex-delivery-result' + self._id).toggle();
                 });
-                $('.ymaps-copyright__content-cell' + self._id).toggle();
+                $('.ymaps-copyright__content-cell').toggle();
                 $('#loader').css({
                     'position': 'absolute',
                     'top': '0',
@@ -270,7 +235,13 @@ jQuery(document).ready(function() {
                 length = self.options.tarif[steps - 1][0];
             }
         }
-        return totalPrice.toString().replace(/(\d)(?=(\d\d\d)+([^\d]|$))/g, "$1&thinsp;");
+
+        if (totalPrice !== 0) {
+            totalPrice = totalPrice.toString().replace(/(\d)(?=(\d\d\d)+([^\d]|$))/g, "$1&thinsp;") + ' руб';
+        } else {
+            totalPrice = 'бесплатно';
+        }
+        return totalPrice;
     };
     YandexDelivery.prototype.initStartPoint = function(self) {
         function getAll(place, setStart) {
@@ -333,7 +304,7 @@ jQuery(document).ready(function() {
             self._finish.properties.set('balloonContent', addressFinish);
             ymaps.route([start, finish]).then(function(router) {
                 var distance = Math.round(router.getLength() / 1000),
-                    message = '<b>Расстояние:</b> ' + distance + ' км<br/>' + '<span style="font-size: 150%;">Стоимость доставки: <b>%s руб</b></span>';
+                    message = '<b>Расстояние:</b> ' + distance + ' км<br/>' + '<span style="font-size: 150%;">Стоимость доставки: <b>%s</b></span>';
                 self._route = router.getPaths();
                 self._route.options.set(self.options.routeStyle);
                 self.getBounds(self);
@@ -343,7 +314,7 @@ jQuery(document).ready(function() {
                 addressStart = (self.isPointInRerions(self, start)) ? addressStart : '<span style="color: red;">' + addressStart + '</span>';
                 addressFinish = (self.isPointInRerions(self, finish)) ? addressFinish : '<span  style="color: red;">' + addressFinish + '</span>';
                 $('#yandex-delivery-result' + self._id).css({
-                    'width': $(self.element).width()
+                    'width': $(self.element).width() + 'px'
                 });
                 $('#result-data' + self._id).html(addressStart + addressFinish + message.replace('%s', self.calculate(self, distance)) + self._outOfRegion);
                 if (!$('#yandex-delivery-result' + self._id).is(":visible")) {
