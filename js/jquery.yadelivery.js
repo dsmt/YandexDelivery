@@ -1,9 +1,10 @@
-;(function($, window, document, undefined) {
+(function($, window, document, undefined) {
     'use strict';
     var pluginName = 'yandexDelivery',
         defaults = {
-            center: [56.2, 40.6],
+            center: [55.75, 37.61],
             address: null,
+            zoom: 5,
             pointA: 'Точка отправки',
             pointB: 'Точка доставки',
             addressA: 'Адрес отправки',
@@ -52,7 +53,7 @@
             ymaps.ready(function() {
                 self._deliveryMap = new ymaps.Map(mapId, {
                     center: self.options.center,
-                    zoom: 5,
+                    zoom: self.options.zoom,
                     type: 'yandex#map',
                     behaviors: ['drag'],
                     controls: ['zoomControl']
@@ -235,13 +236,7 @@
                 length = self.options.tarif[steps - 1][0];
             }
         }
-
-        if (totalPrice !== 0) {
-            totalPrice = totalPrice.toString().replace(/(\d)(?=(\d\d\d)+([^\d]|$))/g, "$1&thinsp;") + ' руб';
-        } else {
-            totalPrice = 'бесплатно';
-        }
-        return totalPrice;
+        return totalPrice.toString().replace(/(\d)(?=(\d\d\d)+([^\d]|$))/g, "$1&thinsp;");
     };
     YandexDelivery.prototype.initStartPoint = function(self) {
         function getAll(place, setStart) {
@@ -304,7 +299,7 @@
             self._finish.properties.set('balloonContent', addressFinish);
             ymaps.route([start, finish]).then(function(router) {
                 var distance = Math.round(router.getLength() / 1000),
-                    message = '<b>Расстояние:</b> ' + distance + ' км<br/>' + '<span style="font-size: 150%;">Стоимость доставки: <b>%s</b></span>';
+                    message = '<b>Расстояние:</b> ' + distance + ' км<br/>' + '<span style="font-size: 150%;">Стоимость доставки: <b>%s руб</b></span>';
                 self._route = router.getPaths();
                 self._route.options.set(self.options.routeStyle);
                 self.getBounds(self);
