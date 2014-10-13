@@ -1,3 +1,4 @@
+;
 (function($, window, document, undefined) {
     'use strict';
     var pluginName = 'yandexDelivery',
@@ -11,6 +12,8 @@
             addressB: 'Адрес доставки',
             outOfRegion: '&#x2A;&thinsp;уточните возможность доставки',
             regionsAllowed: [],
+            background: 'rgba(256, 256, 256, .85)',
+            opacity: true,
             routeStyle: {
                 strokeWidth: 4,
                 strokeColor: '00BA22',
@@ -112,8 +115,14 @@
                         self.searchFinishPoint.showResult(0);
                     }
                 });
+                // if IE8 or earlier
+                if (window.attachEvent && !window.addEventListener) {
+                    self.options.opacity = false;
+                    self.options.regionsAllowed = [];
+                    self.options.background = 'rgb(256, 256, 256)';
+                }
                 if (self.options.regionsAllowed.length !== 0) {
-                    self.initRegionsFilter(self);
+                        self.initRegionsFilter(self);                                          
                 }
                 self._deliveryMap.events.add('click', self._onClick, self);
                 if (self.options.address) {
@@ -126,7 +135,7 @@
                 $('#yandex-delivery-result' + self._id).css({
                     'position': 'absolute',
                     'bottom': '0',
-                    'background-color': 'rgba(256, 256, 256, .85)'                    
+                    'background-color': self.options.background
                 }).toggle();
                 $('#result-data' + self._id).css({
                     'margin-right': '30px'
